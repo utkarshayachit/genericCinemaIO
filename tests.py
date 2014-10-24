@@ -68,8 +68,8 @@ def test_load_item(fname = None):
         else:
             print fullname, hashlib.md5(open(fullname, 'rb').read()).hexdigest()
     cs = test_read(fname)
-    res = cs.load_item({'phi':120,'time':10,'filename':'nada.txt'}, handler)
-    res = cs.load_item({'phi':120,'time':10,'filename':'rgb.png'}, handler)
+    res = cs.load_item(handler, {'phi':120,'time':10,'filename':'nada.txt'})
+    res = cs.load_item(handler, {'phi':120,'time':10,'filename':'rgb.png'})
 
 def test_save_item(fname = None):
     def handler(fullname, item, arguments):
@@ -77,8 +77,7 @@ def test_save_item(fname = None):
         fd.write(item)
         fd.close()
     cs = test_read(fname)
-    res = cs.save_item({'phi':120,'time':10,'filename':'event.txt'},
-                       "The quick brown fox jumped over the lazy dog.\n", handler)
+    res = cs.save_item( "The quick brown fox jumped over the lazy dog.\n", handler, {'phi':120,'time':10,'filename':'event.txt'})
 
 def test_next(fname=None):
     def handler(fullname, arguments):
@@ -89,27 +88,31 @@ def test_next(fname=None):
     cs.set_name_pattern("theta","phi")
 
     for args, idx in cs.next_set():
-        cs.load_item(args, handler)
+        cs.load_item(handler, args)
 
-def demontrate_populate(fname="info.json"):
+def demonstrate_populate(fname="info.json"):
+    """ this demonstrates populating a new cinema store from a flat list of files."""
     cs = cinema_store(fname)
     cs.set_name_pattern_string("{theta}/{phi}")
     cs.add_argument("theta", [0,10,20,30,40])
     cs.add_argument("phi", [0,10,20,30,40])
     cs.write_json()
 
-    import shutil
-
     def handler(fullname, ifile, arguments):
+        import shutil
         print "cp", ifile, fullname
         shutil.copyfile(ifile, fullname)
 
     for args, idx in cs.next_set():
         ifile = "/Users/demarle/tmp/infiles/file_" + str(idx) + ".txt"
         args['filename']="copy2"
-        cs.save_item(args, ifile, handler)
+        cs.save_item(ifile, handler, args)
 
-def demonatrate_analyze(fname="info.json"):
+def demonstrate_analyze(fname="info.json"):
+    """
+    this demonstrates traversing an existing cinema store and doing some analysis
+    (in this case just printing the contents) on each item
+    """
     cs = cinema_store(fname)
 
     def handler(fullname, arguments):
@@ -121,7 +124,63 @@ def demonatrate_analyze(fname="info.json"):
 
     for args, idx in cs.next_set():
         args['filename']="copy2"
-        cs.load_item(args, handler)
+        cs.load_item(handler, args)
+
+
+def test_camera(fname="info.json"):
+    import camera
+    cs = cinema_store(fname)
+    cs.set_name_pattern_string("{phi}/{theta}")
+    cs.add_argument('filename','rgb.png')
+    cam = camera.ThreeSixtyCameraHandler(
+        cs,
+        [180], [-60,-30,0,30,60], [0,0,0],
+        [1,0,0], 5)
+    sys.path.append("/Builds/VTK/devel/master/lib")
+    sys.path.append("/Builds/VTK/devel/master/lib/site-packages/")
+    sys.path.append("/Builds/VTK/devel/master/Wrapping/Python/")
+
+    import vtk
+    rw = vtk.vtkRenderWindow()
+    r = vtk.vtkRenderer()
+    rw.AddRenderer(r)
+    s = vtk.vtkSphereSource()
+    m = vtk.vtkPolyDataMapper()
+    m.SetInputConnection(s.GetOutputPort())
+    a = vtk.vtkActor()
+    a.SetMapper(m)
+    r.AddActor(a)
+    rw.Render()
+    c = r.GetActiveCamera()
+    w2i = vtk.vtkWindowToImageFilter()
+    w2i.SetInput(rw)
+    pw = vtk.vtkPNGWriter()
+    pw.SetInputConnection(w2i.GetOutputPort())
+
+    def handler(cam):
+        p = cam.get_camera_position()
+        c.SetPosition(p[0],p[1],p[2])
+        u = cam.get_camera_view_up()
+        c.SetViewUp(u[0],u[1],u[2])
+        f = cam.get_camera_focal_point()
+        c.SetFocalPoint(f[0],f[1],f[2])
+        r.ResetCameraClippingRange()
+        rw.Render()
+
+        cs.save_item("",None)
+        pt = cs._active_arguments
+        pt['filename'] = 'rgb.png'
+        fn = cs._find_file(pt)
+        pw.SetFileName(fn);
+        pw.Write()
+
+    cam.set_callback(handler)
+
+    for x in cam:
+        cam.apply_position()
+
+    cs.write_json()
+    return cam
 
 if __name__ == "__main__":
     None

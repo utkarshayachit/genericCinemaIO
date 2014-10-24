@@ -32,6 +32,7 @@ class cinema_store :
         self._arguments = None #better name is parameters
         self._name_pattern = None #better name is file_mapping
         self._metadata = None #better name is view hints
+        self._active_arguments = {}
         self.misc_json = {}
         self.read_json(dontcare=True)
 
@@ -153,14 +154,9 @@ class cinema_store :
         range over. """
         return self.get_arguments()[name]
 
-    def set_arguments(self):
-        """
-        returns 'arguments' the parameter set that the results
-        range over. """
-        return self._arguments
-
     def add_argument(self, name, values, **kwargs):
         """ adds a new argument to the list """
+        ##todo, if caller has not set name_pattern, make it up a we add arguments
 
         typechoice = 'range'
         if 'typechoice' in kwargs:
@@ -214,6 +210,32 @@ class cinema_store :
                 res += "_"
             res += "{" + self._name_pattern['args'][a] + "}"
         return res
+
+    def set_active_arguments(self, **kwargs):
+        """
+        Overide all active arguments.
+        """
+        self._active_arguments = kwargs
+
+    def update_active_arguments(self, store_value=True, **kwargs):
+        """
+        Update active arguments and extend arguments range.
+        """
+        for key, value in kwargs.iteritems():
+            value_str = "{value}".format(value=value)
+            self._active_arguments[key] = value_str
+            if store_value:
+                if self._arguments and key in self._arguments:
+                    try:
+                        self._arguments[key]["values"].index(value_str)
+                    except ValueError:
+                        self._arguments[key]["values"].append(value_str)
+                else:
+                    typechoice = "range"
+                    if type(value) == type("String"):
+                        typechoice = "list"
+                    self.add_argument(key, [value], typechoice=typechoice)
+
 
     def set_name_pattern_string(self, string):
         """ call this when you already have a formatted string """
@@ -276,6 +298,10 @@ class cinema_store :
 
     def _find_file(self, args):
         """path to a requested item (specified as a set of arguments)"""
+
+        if args==None:
+            args = self._active_arguments
+
         item = self._expand_item(args)
         directory = self._find_directory(item)
 
@@ -293,31 +319,37 @@ class cinema_store :
             fullname = directory + '_' + filename
         return fullname
 
-    def load_item(self, args, handler):
+    def load_item(self, handler, args=None):
         """
         call this to do something to something already in the data base
         requested item is specified by a set of arguments that distinguish it from others
         once found, we pass the filename for that, and the set of arguments, off to the
         provided handler function to take action on
         """
+        if args==None:
+            args = self._active_arguments
         item = self._expand_item(args) #redundant, but convenient
         fullname = self._find_file(args)
         result = handler(fullname, arguments=item)
         return result
  
-    def save_item(self, args, payload, handler):
+    def save_item(self, payload, handler, args=None):
         """
         call this to add something to the data base
         args specifies what the item is for
         payload specifies what you are adding
         handler is a function that we call back to do to the actual writing
         """
+        if args==None:
+            args = self._active_arguments
         item = self._expand_item(args) #redundant, but convenient
         fullname = self._find_file(args)
         directory = os.path.dirname(fullname)
         if not os.path.exists(directory):
             os.makedirs(directory)
-        result = handler(fullname, payload, arguments=item)
+        result = None
+        if handler:
+            result = handler(fullname, payload, arguments=item)
         return result
 
     def next_set(self):
@@ -327,7 +359,7 @@ class cinema_store :
             def handler(fullname, payload, args)
                 print args, fullname, payload
             for each, idx in cs.next_set():
-                cs.save_item(each, "foo", handler)
+                cs.save_item("foo", handle, each)
 
         this way the caller can easily drive an analysis on the store
         
