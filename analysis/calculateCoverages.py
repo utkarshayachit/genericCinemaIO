@@ -40,6 +40,32 @@ def writeHistogramFiles(outputDir, histograms):
 
 
 # =============================================================================
+# Generate a new section for this info.json which details the analysis being
+# calculated by this module.  The important part of this is the information
+# array which gives the order of the things to be displayed in the static
+# search information widget, as well as the mappings between possible control
+# values and their single-letter encodings.
+# =============================================================================
+def createAnaylsisJson(layerComponents, valueCodes):
+    information = []
+
+    for component in layerComponents:
+        info = { 'name': component }
+        mappings = []
+        for mapping in valueCodes[component]:
+            mappings.append({ 'value': mapping,
+                              'code': valueCodes[component][mapping] })
+        info['mappings'] = mappings
+        information.append(info)
+
+    analysisObject = { 'relativePath': 'layers',
+                       'filename': 'histogram.json',
+                       'information': information }
+
+    return analysisObject
+
+
+# =============================================================================
 # Iterate over the cinema dataset, generating one histogram file for every
 # possible combination of arguments (not including time, theta, or phi).
 # =============================================================================
@@ -55,6 +81,8 @@ def calculateCoverages(namePattern, arguments):
     for component in layerComponents:
         valuesList = arguments[component]['values']
         valueCodes[component] = { valuesList[j]: o2b[j] for j in xrange(len(valuesList)) }
+
+    analysisObject = createAnaylsisJson(layerComponents, valueCodes)
 
     histObj = {}
 
@@ -100,6 +128,8 @@ def calculateCoverages(namePattern, arguments):
     # Now that we have gone through the entire dataset, write out all the histograms
     writeHistogramFiles(args.outdir, histObj)
 
+    return analysisObject
+
 
 # =============================================================================
 # Main entry point
@@ -121,4 +151,10 @@ if __name__ == "__main__":
     namePattern = json_data['name_pattern']
     arguments = json_data['arguments']
 
-    calculateCoverages(namePattern, arguments)
+    # Perform the analysis
+    analysisObject = calculateCoverages(namePattern, arguments)
+
+    # Modify the info.json file and write it back
+    json_data['metadata']['analysis'] = analysisObject
+    with open(infojson, 'w') as fd:
+        json.dump(json_data, fd)
