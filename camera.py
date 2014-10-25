@@ -1,6 +1,7 @@
 class CameraHandler(object):
     """
-    Abstract interface to camera keyframes for cinema.
+    Abstract interface to managing camera keyframes.
+
     maintains a 1:1 function, for indexes (into the set of parameter combinations) to camera states
     camera states consist of eye/posiiton, at/focal_point, and up vectors
     maintains an active index (which corresponds to a camera state)

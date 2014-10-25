@@ -128,6 +128,10 @@ def demonstrate_analyze(fname="info.json"):
 
 
 def test_camera(fname="info.json"):
+    """
+    tests the 360 camera handler by making one and setting up a vtk pipeline
+    that it controls and dumps images out into the data base from.
+    """
     import camera
     cs = cinema_store(fname)
     cs.set_name_pattern_string("{phi}/{theta}")
@@ -166,6 +170,7 @@ def test_camera(fname="info.json"):
         c.SetFocalPoint(f[0],f[1],f[2])
         r.ResetCameraClippingRange()
         rw.Render()
+        w2i.Mofified()
 
         cs.save_item("",None)
         pt = cs._active_arguments
@@ -181,6 +186,39 @@ def test_camera(fname="info.json"):
 
     cs.write_json()
     return cam
+
+def test_Explorer():
+    import explorers
+
+    cs = cinema_store('info.json')
+    cs.get_arguments()
+    e = explorers.Explorer(cs, "experimental-type", cs.get_arguments(), None, None)
+    print "ARGS", e.list_arguments()
+    print "DT", e.get_data_type()
+    e.UpdatePipeline("NONE")
+
+    print "*"*40
+    g = explorers.engine()
+    e = explorers.Explorer(cs, "experimental-type", cs.get_arguments(), "hey man", g)
+    e.UpdatePipeline("NONE")
+
+    return e
+
+def test_vtk_explorer():
+    import explorers
+    import vtk_explorers
+
+    cs = cinema_store('vtkinfo.json')
+    cs.set_name_pattern_string("{offset}")
+    cs.add_argument("offset", [0,.2,.4,.6,.8,1.0])
+    cs.add_argument("filename", ['slice.png'])
+    cs.write_json()
+
+    g = vtk_explorers.slice_engine()
+    e = explorers.Explorer(cs, "experimental-type", cs.get_arguments(), "hey man", g)
+    e.UpdatePipeline("NONE")
+
+    return e
 
 if __name__ == "__main__":
     None
