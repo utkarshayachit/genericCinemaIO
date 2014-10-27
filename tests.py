@@ -204,7 +204,7 @@ def test_Explorer():
 
     return e
 
-def test_vtk_clip(fname):
+def test_vtk_clip(fname=None):
     import explorers
     import vtk_explorers
     import vtk
@@ -254,13 +254,11 @@ def test_vtk_clip(fname):
 
     return e
 
+
 def test_pv_slice(fname):
     import explorers
     import pv_explorers
     import paraview.simple as pv
-
-    if not fname:
-        fname = "info.json"
 
     # set up some processing task
     view_proxy = pv.CreateRenderView()
@@ -270,13 +268,13 @@ def test_pv_slice(fname):
     sliceRep = pv.Show(sliceFilt)
 
     #make or open a cinema data store to put results in
-    cs = CinemaStore(fname)
-    cs.set_name_pattern_string("{phi}_{theta}_{offset}_{filename}")
-    a = cs.add_argument("phi", [90,120,140])
-    a = cs.add_argument("theta", [-90,-30,30,90])
-    a = cs.add_argument("offset", [-.4,-.2,0,.2,.4])
-    a = cs.add_argument("color", [[1,1,0],[0,1,1],[1,0,1]], typechoice='list')
-    a = cs.add_argument("filename", ['slice.png'])
+    cs = FileStore(fname)
+    cs.filename_pattern = "{phi}_{theta}_{offset}_slice.png"
+    cs.add_descriptor("phi", make_cinema_descriptor_properties('phi', [90, 120, 140]))
+    cs.add_descriptor("theta", make_cinema_descriptor_properties('theta', [-90,-30,30,90]))
+    cs.add_descriptor("offset", make_cinema_descriptor_properties('offset', [-.4,-.2,0,.2,.4]))
+    cs.add_descriptor("color", make_cinema_descriptor_properties('color',
+        [[1,1,0],[0,1,1],[1,0,1]], typechoice='list'))
 
     #associate control points wlth parameters of the data store
     cam = pv_explorers.Camera([0,0,0], [0,1,0], 10.0, view_proxy) #phi,theta implied
@@ -284,15 +282,30 @@ def test_pv_slice(fname):
     col = pv_explorers.Color("color", sliceRep)
 
     args = ["phi","theta","offset","color"]
-    e = explorers.Explorer(cs, args, [cam, filt, col])
-
+    e = pv_explorers.ImageExplorer(cs, args, [cam, filt, col])
     #run through all parameter combinations and put data into the store
-    e.UpdatePipeline("NONE")
-    cs.write_json()
-
+    e.explore()
     del view_proxy
     return e
 
+def test_store():
+    fs = FileStore()
+    fs.filename_pattern = "{phi}/{theta}/data.raw"
+    fs.add_descriptor('theta', {
+        "default": 60,
+        "type":  "range",
+        "values": [60, 90, 120, 150],
+        "label": "theta"
+        })
+    fs.add_descriptor('phi', {
+        "default": 180,
+        "type":  "range",
+        "values": [180],
+        "label": "phi"
+        })
+    doc = Document({"phi": 10}, "Hello World")
+    fs.insert(doc)
 
 if __name__ == "__main__":
-    None
+    test_store()
+    test_pv_slice("/tmp/data/info.json")

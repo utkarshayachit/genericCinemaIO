@@ -14,17 +14,13 @@ class Explorer(object):
         engines #the thing we pass off values to to do the work
         ):
 
-        self.cinema_store = cinema_store
+        self.__cinema_store = cinema_store
         self.arguments = arguments
         self.engines = engines
 
-        #any of the engines can declare that they define a particular cinema data
-        #data type, which will inform the viewing apps what to do with the data
-        if self.engines and self.cinema_store:
-            for e in self.engines:
-                dt = e.get_data_type()
-                if dt:
-                    self.cinema_store.add_metadata({'type':dt})
+    @property
+    def cinema_store(self):
+        return self.__cinema_store
 
     def list_arguments(self):
         """
@@ -36,39 +32,27 @@ class Explorer(object):
         """ Give engines a chance to get ready for a run """
         if self.engines:
             for e in self.engines:
-                res = e.prepare()
+                res = e.prepare(self)
 
-    def execute(self, arguments):
-        """ Execute 1 step. """
-        self.cinema_store.update_active_arguments(arguments)
-
-        if self.engines:
-            for e in self.engines:
-                res = e.execute(arguments)
-                #engines may or may not do something in the save step
-                #set up chains using iSave=True in the last engine's constructor
-                self.cinema_store.save_item(res, e.save, args=arguments)
-
-    def UpdatePipeline(self, arguments):
-        """ Execute all steps. """
-
+    def explore(self):
+        """Explore the problem space to populate the store"""
         self.prepare()
 
-        #todo: should probably be a static method in cinema_store
         ordered = self.list_arguments()
         args = []
         values = []
         for name in ordered:
-            vals = self.cinema_store.get_argument(name)['values']
-            if not name == 'filename':
-                args.append(name)
-                values.append(vals)
-        gidx = 0
+            vals = self.cinema_store.get_descriptor_properties(name)['values']
+            args.append(name)
+            values.append(vals)
+
         for element in itertools.product(*values):
-            res = {}
-            for idx in range(0,len(element)):
-                    res[args[idx]] = element[idx]
-            self.execute(res)
+            desc = dict(itertools.izip(args, element))
+            # Create the document/data product for this sample.
+            doc = cinema_store.Document(desc)
+            for e in self.engines:
+                e.execute(doc)
+            self.insert(doc)
 
         self.finish()
 
@@ -77,6 +61,9 @@ class Explorer(object):
         if self.engines:
             for e in self.engines:
                 res = e.finish()
+
+    def insert(self, doc):
+        self.cinema_store.insert(doc)
 
 class Engine(object):
     """
@@ -87,18 +74,10 @@ class Engine(object):
     then tie a particular set of arguments to an action with an engine
     """
 
-    def __init__(self, iSave=False):
-        self.iSave = iSave
+    def __init__(self):
+        pass
 
-    @classmethod
-    def get_data_type(cls):
-        """
-        subclasses return a cinema type string if they are want to write the cinema
-        type into the info.json
-        """
-        return None
-
-    def prepare(self):
+    def prepare(self, explorer):
         """ subclasses get ready to run here """
         pass
 
@@ -106,11 +85,6 @@ class Engine(object):
         """ subclasses cleanup after running here """
         pass
 
-    def execute(self, arguments):
-        """ subclasses operate on arguments here and return a result """
-        payload = None
-        return payload
-
-    def save(self, fullname, payload, arguments):
-        """ subclasses save off the payload here  """
+    def execute(self, document):
+        """ subclasses operate on arguments here"""
         pass
