@@ -204,10 +204,11 @@ def test_Explorer():
 
     return e
 
-def test_vtk_explorer(fname):
+def test_vtk_slice(fname):
     import explorers
     import vtk_explorers
     import vtk
+
     s = vtk.vtkSphereSource()
 
     if not fname:
@@ -224,6 +225,29 @@ def test_vtk_explorer(fname):
     cs.write_json()
 
     return e
+
+def test_pv_slice(fname):
+    import explorers
+    import pv_explorers
+    import paraview.simple
+
+    s = paraview.simple.Sphere()
+
+    if not fname:
+        fname = "info.json"
+    cs = CinemaStore(fname)
+    cs.set_name_pattern_string("{offset}_{filename}")
+    a = cs.add_argument("offset", [0,.2,.4,.6,.8,1.0])
+    a = cs.add_argument("filename", ['slice.png'])
+
+    g = pv_explorers.Slice()
+    e = explorers.Explorer(cs, cs.get_arguments(), s, g)
+    e.UpdatePipeline("NONE")
+
+    cs.write_json()
+
+    return e
+
 
 if __name__ == "__main__":
     None
