@@ -7,7 +7,7 @@ from cinemaDB import *
 def test_read(fname = None, silent = True):
     if not fname:
         fname = "info.json"
-    cs = cinema_store(fname)
+    cs = CinemaStore(fname)
     if not cs.verify():
         print "problem with that file"
         return None
@@ -38,7 +38,7 @@ def test_argument(fname = None):
         print x, "\t", args[x]
 
 def test_name_pattern():
-    cs = cinema_store("info.json")
+    cs = CinemaStore("info.json")
     cs.set_name_pattern("time","theta","range")
     print(cs.get_name_pattern_string())
     cs.set_name_pattern("theta","time","range",usedir=True)
@@ -49,7 +49,7 @@ def test_name_pattern():
 def test_write(fname=None):
     if not fname:
         fname = "info.json"
-    cs = cinema_store(fname)
+    cs = CinemaStore(fname)
 
     cs.set_metadata = {"testing":123}
     a = cs.add_argument("theta", [0,45,90,135,180])
@@ -92,7 +92,7 @@ def test_next(fname=None):
 
 def demonstrate_populate(fname="info.json"):
     """ this demonstrates populating a new cinema store from a flat list of files."""
-    cs = cinema_store(fname)
+    cs = CinemaStore(fname)
     cs.set_name_pattern_string("{theta}/{phi}")
     cs.add_argument("theta", [0,10,20,30,40])
     cs.add_argument("phi", [0,10,20,30,40])
@@ -113,7 +113,7 @@ def demonstrate_analyze(fname="info.json"):
     this demonstrates traversing an existing cinema store and doing some analysis
     (in this case just printing the contents) on each item
     """
-    cs = cinema_store(fname)
+    cs = CinemaStore(fname)
 
     def handler(fullname, arguments):
         print fullname
@@ -133,7 +133,7 @@ def test_camera(fname="info.json"):
     that it controls and dumps images out into the data base from.
     """
     import camera
-    cs = cinema_store(fname)
+    cs = CinemaStore(fname)
     cs.set_name_pattern_string("{phi}/{theta}")
     cs.add_argument('filename','rgb.png')
     cam = camera.ThreeSixtyCameraHandler(
@@ -170,7 +170,7 @@ def test_camera(fname="info.json"):
         c.SetFocalPoint(f[0],f[1],f[2])
         r.ResetCameraClippingRange()
         rw.Render()
-        w2i.Mofified()
+        w2i.Modified()
 
         cs.save_item("",None)
         pt = cs._active_arguments
@@ -190,7 +190,7 @@ def test_camera(fname="info.json"):
 def test_Explorer():
     import explorers
 
-    cs = cinema_store('info.json')
+    cs = CinemaStore('info.json')
     cs.get_arguments()
     e = explorers.Explorer(cs, "experimental-type", cs.get_arguments(), None, None)
     print "ARGS", e.list_arguments()
@@ -208,7 +208,7 @@ def test_vtk_explorer():
     import explorers
     import vtk_explorers
 
-    cs = cinema_store('vtkinfo.json')
+    cs = CinemaStore('vtkinfo.json')
     cs.set_name_pattern_string("{offset}")
     cs.add_argument("offset", [0,.2,.4,.6,.8,1.0])
     cs.add_argument("filename", ['slice.png'])

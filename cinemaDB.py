@@ -15,7 +15,7 @@ import os.path
 import re
 import itertools
 
-class cinema_store :
+class CinemaStore :
     """
     A class to represent a set of data that cinema works with.
     Basic things this does for you are:
@@ -39,7 +39,7 @@ class cinema_store :
     @staticmethod
     def fromArguments(arguments, filename='info.json', metadata=None):
         """
-        construct a cinema_store from an argument list
+        construct a CinemaStore from an argument list
         each argument in the list consists of a two or three element list containing:
         a name, a list of values and optional specs
         the optionals, specified inside a {} dict are:
@@ -47,7 +47,7 @@ class cinema_store :
             'label'= default is name
             'default'= default is values[0]
         """
-        cs = cinema_store(filename)
+        cs = CinemaStore(filename)
         np = ""
         for x in arguments:
             #todo: better args handling to make the uncommon options easier to use
@@ -168,7 +168,7 @@ class cinema_store :
         if 'label' in kwargs:
             label = kwargs['label']
 
-        a = cinema_store._make_argument(name, values, typechoice, default, label)
+        a = CinemaStore._make_argument(name, values, typechoice, default, label)
         if a:
             if not self._arguments:
                 self._arguments = {}
