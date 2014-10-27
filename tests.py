@@ -249,6 +249,7 @@ def test_vtk_clip(fname):
 
     #run through all parameter combinations and put data into the store
     e.UpdatePipeline("NONE")
+
     cs.write_json()
 
     return e
