@@ -142,6 +142,11 @@ class CinemaStore :
         self._metadata = metadata
         #TODO: hooks for type specific customizations can go here
 
+    def add_metadata(self, keyval):
+        if not self._metadata:
+            self._metadata = {}
+        self._metadata.update(keyval)
+
     def get_arguments(self):
         """
         returns 'arguments' the parameter set that the results

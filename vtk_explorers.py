@@ -3,6 +3,10 @@ import vtk
 
 class Slice(explorers.Engine):
 
+    @classmethod
+    def get_data_type(cls):
+        return "parametric-image-stack"
+
     def __init__(self):
         explorers.Engine.__init__(self)
 
@@ -11,17 +15,14 @@ class Slice(explorers.Engine):
 
         r = vtk.vtkRenderer()
         rw.AddRenderer(r)
-        s = vtk.vtkSphereSource()
-
-        normals = vtk.vtkPolyDataNormals()
-        normals.SetInputConnection(s.GetOutputPort())
+        #s = self.vtk.vtkSphereSource()
 
         plane = vtk.vtkPlane()
         plane.SetOrigin(0, 0, 0)
         plane.SetNormal(-1, -1, 0)
 
         clipper = vtk.vtkClipPolyData()
-        clipper.SetInputConnection(normals.GetOutputPort())
+        #clipper.SetInputConnection(s.GetOutputPort())
         clipper.SetClipFunction(plane)
         clipper.GenerateClipScalarsOn()
         clipper.GenerateClippedOutputOn()
@@ -34,7 +35,7 @@ class Slice(explorers.Engine):
         a = vtk.vtkActor()
         a.SetMapper(m)
         r.AddActor(a)
-        rw.Render()
+        #rw.Render()
 
         w2i = vtk.vtkWindowToImageFilter()
         w2i.SetInput(rw)
@@ -46,11 +47,11 @@ class Slice(explorers.Engine):
 
     def prepare(self, setup):
         """ subclasses take whatever is in setup here and use it to get ready """
-        print "SETUP", setup
+        self.clipper.SetInputConnection(setup.GetOutputPort())
+        self.rw.Render()
 
     def execute(self, arguments):
         """ subclasses operate on arguments here and return a result """
-        print "EXECUTE", arguments
         o = arguments['offset']
         self.clipper.SetValue(o)
         self.rw.Render()

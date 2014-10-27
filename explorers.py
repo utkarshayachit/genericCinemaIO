@@ -8,7 +8,6 @@ class Explorer(object):
 
     def __init__(self,
         cinema_store,
-        data_type,
         arguments, #these are the things that this explorer is responsible for and their ranges
         setup, # anything else we need to setup the engine
         engine, #the thing we pass off values to to do the work
@@ -19,13 +18,10 @@ class Explorer(object):
         self.engine = engine
         if engine and setup:
             self.engine.prepare(setup)
-        self.data_type = data_type
+            self.cinema_store.add_metadata({'type':engine.get_data_type()})
 
     def list_arguments(self):
         return self.arguments.keys()
-
-    def get_data_type(self):
-        return self.data_type
 
     def execute(self, arguments):
         """ Excecute 1 step. """
@@ -61,6 +57,10 @@ class Engine(object):
 
     def __init__(self):
         pass
+
+    @classmethod
+    def get_data_type(cls):
+        return "experimental"
 
     def prepare(self, setup):
         """ subclasses take whatever is in setup here and use it to get ready """

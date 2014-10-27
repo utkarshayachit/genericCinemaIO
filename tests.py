@@ -192,31 +192,36 @@ def test_Explorer():
 
     cs = CinemaStore('info.json')
     cs.get_arguments()
-    e = explorers.Explorer(cs, "experimental-type", cs.get_arguments(), None, None)
+    e = explorers.Explorer(cs, cs.get_arguments(), None, None)
     print "ARGS", e.list_arguments()
     print "DT", e.get_data_type()
     e.UpdatePipeline("NONE")
 
     print "*"*40
     g = explorers.Engine()
-    e = explorers.Explorer(cs, "experimental-type", cs.get_arguments(), "hey man", g)
+    e = explorers.Explorer(cs, cs.get_arguments(), "hey man", g)
     e.UpdatePipeline("NONE")
 
     return e
 
-def test_vtk_explorer():
+def test_vtk_explorer(fname):
     import explorers
     import vtk_explorers
+    import vtk
+    s = vtk.vtkSphereSource()
 
-    cs = CinemaStore('vtkinfo.json')
-    cs.set_name_pattern_string("{offset}")
+    if not fname:
+        fname = "info.json"
+    cs = CinemaStore(fname)
+    cs.set_name_pattern_string("{offset}_{filename}")
     a = cs.add_argument("offset", [0,.2,.4,.6,.8,1.0])
     a = cs.add_argument("filename", ['slice.png'])
-    cs.write_json()
 
     g = vtk_explorers.Slice()
-    e = explorers.Explorer(cs, "experimental-type", cs.get_arguments(), "hey man", g)
+    e = explorers.Explorer(cs, cs.get_arguments(), s, g)
     e.UpdatePipeline("NONE")
+
+    cs.write_json()
 
     return e
 
