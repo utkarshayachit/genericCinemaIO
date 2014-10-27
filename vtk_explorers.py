@@ -1,10 +1,10 @@
 import explorers
 import vtk
 
-class slice_engine(explorers.engine):
+class Slice(explorers.Engine):
 
     def __init__(self):
-        explorers.engine.__init__(self)
+        explorers.Engine.__init__(self)
 
         rw = vtk.vtkRenderWindow()
         self.rw = rw
@@ -50,8 +50,8 @@ class slice_engine(explorers.engine):
 
     def execute(self, arguments):
         """ subclasses operate on arguments here and return a result """
+        print "EXECUTE", arguments
         o = arguments['offset']
-        print "EXECUTE", arguments, o
         self.clipper.SetValue(o)
         self.rw.Render()
         self.w2i.Modified()
