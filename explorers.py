@@ -1,9 +1,9 @@
-import cinemaDB
+import cinema_store
 import itertools
 
 class Explorer(object):
     """
-    Middleman that connects an arbitrary producing code to the cinema_store.
+    Middleman that connects an arbitrary producing code to the CinemaStore.
     """
 
     def __init__(self,
@@ -22,14 +22,13 @@ class Explorer(object):
         self.data_type = data_type
 
     def list_arguments(self):
-        return [x for x in self.arguments.keys()]
+        return self.arguments.keys()
 
     def get_data_type(self):
         return self.data_type
 
     def execute(self, arguments):
         """ Excecute 1 step. """
-
         self.cinema_store.update_active_arguments(arguments)
 
         if self.engine:
@@ -44,9 +43,9 @@ class Explorer(object):
         args = []
         values = []
         for name in ordered:
-            args.append(name)
             vals = self.arguments[name]['values']
             if not name == 'filename':
+                args.append(name)
                 values.append(vals)
         gidx = 0
         for element in itertools.product(*values):
@@ -55,7 +54,7 @@ class Explorer(object):
                     res[args[idx]] = element[idx]
             self.execute(res)
 
-class engine(object):
+class Engine(object):
     """
     abstract interface for things that can produce data
     """
