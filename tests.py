@@ -192,33 +192,102 @@ def test_Explorer():
 
     cs = CinemaStore('info.json')
     cs.get_arguments()
-    e = explorers.Explorer(cs, "experimental-type", cs.get_arguments(), None, None)
+    e = explorers.Explorer(cs, cs.get_arguments(), None, None)
     print "ARGS", e.list_arguments()
     print "DT", e.get_data_type()
     e.UpdatePipeline("NONE")
 
     print "*"*40
     g = explorers.Engine()
-    e = explorers.Explorer(cs, "experimental-type", cs.get_arguments(), "hey man", g)
+    e = explorers.Explorer(cs, cs.get_arguments(), "hey man", g)
     e.UpdatePipeline("NONE")
 
     return e
 
-def test_vtk_explorer():
+def test_vtk_clip(fname):
     import explorers
     import vtk_explorers
+    import vtk
 
-    cs = CinemaStore('vtkinfo.json')
-    cs.set_name_pattern_string("{offset}")
+    if not fname:
+        fname = "info.json"
+
+    s = vtk.vtkSphereSource()
+
+    plane = vtk.vtkPlane()
+    plane.SetOrigin(0, 0, 0)
+    plane.SetNormal(-1, -1, 0)
+
+    clip = vtk.vtkClipPolyData()
+    clip.SetInputConnection(s.GetOutputPort())
+    clip.SetClipFunction(plane)
+    clip.GenerateClipScalarsOn()
+    clip.GenerateClippedOutputOn()
+    clip.SetValue(0)
+    print clip
+
+    m = vtk.vtkPolyDataMapper()
+    m.SetInputConnection(clip.GetOutputPort())
+
+    rw = vtk.vtkRenderWindow()
+    r = vtk.vtkRenderer()
+    rw.AddRenderer(r)
+
+    a = vtk.vtkActor()
+    a.SetMapper(m)
+
+    r.AddActor(a)
+
+    cs = CinemaStore(fname)
+    cs.set_name_pattern_string("{offset}_{filename}")
     a = cs.add_argument("offset", [0,.2,.4,.6,.8,1.0])
     a = cs.add_argument("filename", ['slice.png'])
-    cs.write_json()
 
-    g = vtk_explorers.Slice()
-    e = explorers.Explorer(cs, "experimental-type", cs.get_arguments(), "hey man", g)
+    g = vtk_explorers.Clip('offset', clip, rw)
+    e = explorers.Explorer(cs, ['offset'], [g])
     e.UpdatePipeline("NONE")
 
+    cs.write_json()
+
     return e
+
+def test_pv_slice(fname):
+    import explorers
+    import pv_explorers
+    import paraview.simple as pv
+
+    if not fname:
+        fname = "info.json"
+
+    cs = CinemaStore(fname)
+    cs.set_name_pattern_string("{phi}_{theta}_{offset}_{filename}")
+    a = cs.add_argument("phi", [90,120,140])
+    a = cs.add_argument("theta", [-90,-30,30,90])
+    a = cs.add_argument("offset", [-.4,-.2,0,.2,.4])
+    a = cs.add_argument("color", [[1,1,0],[0,1,1],[1,0,1]])
+    a = cs.add_argument("filename", ['slice.png'])
+
+    view_proxy = pv.CreateRenderView()
+    s = pv.Sphere()
+
+    sliceFilt = pv.Slice( SliceType="Plane", Input=s, SliceOffsetValues=[0.0] )
+    sliceFilt.SliceType.Normal = [0,1,0]
+
+    sliceRep = pv.Show(sliceFilt)
+
+    cam = pv_explorers.Camera([0,0,0], [0,1,0], 10.0, view_proxy)
+    filt = pv_explorers.Slice("offset", sliceFilt)
+    col = pv_explorers.Color("color", sliceRep)
+
+    args = ["phi","theta","offset","color"]
+    e = explorers.Explorer(cs, args, [cam, filt, col])
+    e.UpdatePipeline("NONE")
+
+    cs.write_json()
+
+    del view_proxy
+    return e
+
 
 if __name__ == "__main__":
     None
