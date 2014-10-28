@@ -212,6 +212,7 @@ def test_vtk_clip(fname):
     if not fname:
         fname = "info.json"
 
+    # set up some processing task
     s = vtk.vtkSphereSource()
 
     plane = vtk.vtkPlane()
@@ -224,7 +225,6 @@ def test_vtk_clip(fname):
     clip.GenerateClipScalarsOn()
     clip.GenerateClippedOutputOn()
     clip.SetValue(0)
-    print clip
 
     m = vtk.vtkPolyDataMapper()
     m.SetInputConnection(clip.GetOutputPort())
@@ -235,18 +235,20 @@ def test_vtk_clip(fname):
 
     a = vtk.vtkActor()
     a.SetMapper(m)
-
     r.AddActor(a)
 
+    #make or open a cinema data store to put results in
     cs = CinemaStore(fname)
     cs.set_name_pattern_string("{offset}_{filename}")
     a = cs.add_argument("offset", [0,.2,.4,.6,.8,1.0])
     a = cs.add_argument("filename", ['slice.png'])
 
+    #associate control points wlth parameters of the data store
     g = vtk_explorers.Clip('offset', clip, rw)
     e = explorers.Explorer(cs, ['offset'], [g])
-    e.UpdatePipeline("NONE")
 
+    #run through all parameter combinations and put data into the store
+    e.UpdatePipeline("NONE")
     cs.write_json()
 
     return e
@@ -259,30 +261,32 @@ def test_pv_slice(fname):
     if not fname:
         fname = "info.json"
 
+    # set up some processing task
+    view_proxy = pv.CreateRenderView()
+    s = pv.Sphere()
+    sliceFilt = pv.Slice( SliceType="Plane", Input=s, SliceOffsetValues=[0.0] )
+    sliceFilt.SliceType.Normal = [0,1,0]
+    sliceRep = pv.Show(sliceFilt)
+
+    #make or open a cinema data store to put results in
     cs = CinemaStore(fname)
     cs.set_name_pattern_string("{phi}_{theta}_{offset}_{filename}")
     a = cs.add_argument("phi", [90,120,140])
     a = cs.add_argument("theta", [-90,-30,30,90])
     a = cs.add_argument("offset", [-.4,-.2,0,.2,.4])
-    a = cs.add_argument("color", [[1,1,0],[0,1,1],[1,0,1]])
+    a = cs.add_argument("color", [[1,1,0],[0,1,1],[1,0,1]], typechoice='list')
     a = cs.add_argument("filename", ['slice.png'])
 
-    view_proxy = pv.CreateRenderView()
-    s = pv.Sphere()
-
-    sliceFilt = pv.Slice( SliceType="Plane", Input=s, SliceOffsetValues=[0.0] )
-    sliceFilt.SliceType.Normal = [0,1,0]
-
-    sliceRep = pv.Show(sliceFilt)
-
-    cam = pv_explorers.Camera([0,0,0], [0,1,0], 10.0, view_proxy)
+    #associate control points wlth parameters of the data store
+    cam = pv_explorers.Camera([0,0,0], [0,1,0], 10.0, view_proxy) #phi,theta implied
     filt = pv_explorers.Slice("offset", sliceFilt)
     col = pv_explorers.Color("color", sliceRep)
 
     args = ["phi","theta","offset","color"]
     e = explorers.Explorer(cs, args, [cam, filt, col])
-    e.UpdatePipeline("NONE")
 
+    #run through all parameter combinations and put data into the store
+    e.UpdatePipeline("NONE")
     cs.write_json()
 
     del view_proxy
