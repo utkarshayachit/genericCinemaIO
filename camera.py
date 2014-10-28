@@ -10,7 +10,8 @@ class CameraHandler(object):
     *  updateing the supplied cinema_store to the parameters for the index and then
     *  passing off the corresponding camera state to a callback
 
-    TODO: I am thinking that the bi-directional mapping and index should be more accessible
+    TODO: I am thinking that the bi-directional mapping and index should be more accessible.
+    This module may go away, at the moment using a camera explorer class instead.
     """
 
     def __init__(self, cinema_store):

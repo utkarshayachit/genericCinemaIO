@@ -2,52 +2,99 @@ import explorers
 
 import paraview.simple as simple
 
-class Slice(explorers.Engine):
+class Camera(explorers.Engine):
 
-    #    import sys
-    #    sys.path.append("/Builds/ParaView/devel/master_debug/lib")
-    #    sys.path.append("/Builds/ParaView/devel/master_debug/lib/site-packages")
+    @classmethod
+    def get_data_type(cls):
+        return None
+
+    def __init__(self, center, axis, distance, view, iSave=False):
+
+        explorers.Engine.__init__(self, iSave)
+        try:
+            # Z => 0 | Y => 2 | X => 1
+            self.offset = (axis.index(1) + 1 ) % 3
+        except ValueError:
+            raise Exception("Rotation axis not supported", axis)
+        self.center = center
+        self.distance = distance
+        self.view = view
+
+    def execute(self, arguments):
+        import math
+
+        theta = arguments['theta']
+        phi = arguments['phi']
+
+        theta_rad = float(theta) / 180.0 * math.pi
+        phi_rad = float(phi) / 180.0 * math.pi
+        pos = [
+            float(self.center[0]) - math.cos(phi_rad)   * self.distance * math.cos(theta_rad),
+            float(self.center[1]) + math.sin(phi_rad)   * self.distance * math.cos(theta_rad),
+            float(self.center[2]) + math.sin(theta_rad) * self.distance
+            ]
+        up = [
+            + math.cos(phi_rad) * math.sin(theta_rad),
+            - math.sin(phi_rad) * math.sin(theta_rad),
+            + math.cos(theta_rad)
+            ]
+
+        self.view.CameraPosition = pos
+        self.view.CameraViewUp = up
+        self.view.CameraFocalPoint = self.center
+
+        return None
+
+    def save(self, fullname, payload, arguments):
+        if self.iSave:
+            #print "SAVING", fullname, payload, arguments
+            simple.WriteImage(fullname)
+
+
+class Slice(explorers.Engine):
 
     @classmethod
     def get_data_type(cls):
         return "parametric-image-stack"
 
-    def __init__(self):
-        explorers.Engine.__init__(self)
+    def __init__(self, argument, filt, iSave=False):
+        explorers.Engine.__init__(self, iSave)
 
-    def prepare(self, setup):
-        """ subclasses take whatever is in setup here and use it to get ready """
-
-        data = setup
-
-        self.view_proxy = simple.CreateRenderView()
-        self.slice = simple.Slice( SliceType="Plane", Input=data, SliceOffsetValues=[0.0] )
-        self.sliceRepresentation = simple.Show(self.slice)
-        #self.colorByArray = colorByArray
-        #self.parallelScaleRatio = parallelScaleRatio
-        #self.slice.SliceType.Normal = normal
-        self.dataBounds = data.GetDataInformation().GetBounds()
-        #self.normal = normal
-        #self.viewup = viewup
-        #self.origin = [ self.dataBounds[0] + bound_range[0] * (self.dataBounds[1] - self.dataBounds[0]),
-        #                self.dataBounds[2] + bound_range[0] * (self.dataBounds[3] - self.dataBounds[2]),
-        #                self.dataBounds[4] + bound_range[0] * (self.dataBounds[5] - self.dataBounds[4]) ]
-        #self.number_of_steps = steps
-        #ratio = (bound_range[1] - bound_range[0]) / float(steps-1)
-        #self.origin_inc = [ normal[0] * ratio * (self.dataBounds[1] - self.dataBounds[0]),
-        #                    normal[1] * ratio * (self.dataBounds[3] - self.dataBounds[2]),
-        #                    normal[2] * ratio * (self.dataBounds[5] - self.dataBounds[4]) ]
-
+        self.argument = argument
+        self.slice = filt
 
     def execute(self, arguments):
         """ subclasses operate on arguments here and return a result """
-        o = arguments['offset']
+        o = arguments[self.argument]
         self.slice.SliceOffsetValues=[o]
-        simple.Render()
         payload = None
         return payload
 
     def save(self, fullname, payload, arguments):
         """ subclasses save off the payload here  """
-        print "SAVING", fullname, payload, arguments
-        simple.WriteImage(fullname)
+        if self.iSave:
+            #print "SAVING", fullname, payload, arguments
+            simple.WriteImage(fullname)
+
+class Color(explorers.Engine):
+    @classmethod
+    def get_data_type(cls):
+        return None
+
+    def __init__(self, argument, rep, iSave=True):
+        explorers.Engine.__init__(self, iSave)
+        self.argument = argument
+        self.rep = rep
+
+    def execute(self, arguments):
+        """ subclasses operate on arguments here and return a result """
+        o = arguments[self.argument]
+        self.rep.DiffuseColor = o
+        payload = None
+        return payload
+
+    def save(self, fullname, payload, arguments):
+        """ subclasses save off the payload here  """
+        if self.iSave:
+            #print "SAVING", fullname, payload, arguments
+            simple.WriteImage(fullname)

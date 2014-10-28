@@ -204,22 +204,47 @@ def test_Explorer():
 
     return e
 
-def test_vtk_slice(fname):
+def test_vtk_clip(fname):
     import explorers
     import vtk_explorers
     import vtk
 
-    s = vtk.vtkSphereSource()
-
     if not fname:
         fname = "info.json"
+
+    s = vtk.vtkSphereSource()
+
+    plane = vtk.vtkPlane()
+    plane.SetOrigin(0, 0, 0)
+    plane.SetNormal(-1, -1, 0)
+
+    clip = vtk.vtkClipPolyData()
+    clip.SetInputConnection(s.GetOutputPort())
+    clip.SetClipFunction(plane)
+    clip.GenerateClipScalarsOn()
+    clip.GenerateClippedOutputOn()
+    clip.SetValue(0)
+    print clip
+
+    m = vtk.vtkPolyDataMapper()
+    m.SetInputConnection(clip.GetOutputPort())
+
+    rw = vtk.vtkRenderWindow()
+    r = vtk.vtkRenderer()
+    rw.AddRenderer(r)
+
+    a = vtk.vtkActor()
+    a.SetMapper(m)
+
+    r.AddActor(a)
+
     cs = CinemaStore(fname)
     cs.set_name_pattern_string("{offset}_{filename}")
     a = cs.add_argument("offset", [0,.2,.4,.6,.8,1.0])
     a = cs.add_argument("filename", ['slice.png'])
 
-    g = vtk_explorers.Slice()
-    e = explorers.Explorer(cs, cs.get_arguments(), s, g)
+    g = vtk_explorers.Clip('offset', clip, rw)
+    e = explorers.Explorer(cs, ['offset'], [g])
     e.UpdatePipeline("NONE")
 
     cs.write_json()
@@ -229,23 +254,38 @@ def test_vtk_slice(fname):
 def test_pv_slice(fname):
     import explorers
     import pv_explorers
-    import paraview.simple
-
-    s = paraview.simple.Sphere()
+    import paraview.simple as pv
 
     if not fname:
         fname = "info.json"
+
     cs = CinemaStore(fname)
-    cs.set_name_pattern_string("{offset}_{filename}")
-    a = cs.add_argument("offset", [0,.2,.4,.6,.8,1.0])
+    cs.set_name_pattern_string("{phi}_{theta}_{offset}_{filename}")
+    a = cs.add_argument("phi", [90,120,140])
+    a = cs.add_argument("theta", [-90,-30,30,90])
+    a = cs.add_argument("offset", [-.4,-.2,0,.2,.4])
+    a = cs.add_argument("color", [[1,1,0],[0,1,1],[1,0,1]])
     a = cs.add_argument("filename", ['slice.png'])
 
-    g = pv_explorers.Slice()
-    e = explorers.Explorer(cs, cs.get_arguments(), s, g)
+    view_proxy = pv.CreateRenderView()
+    s = pv.Sphere()
+
+    sliceFilt = pv.Slice( SliceType="Plane", Input=s, SliceOffsetValues=[0.0] )
+    sliceFilt.SliceType.Normal = [0,1,0]
+
+    sliceRep = pv.Show(sliceFilt)
+
+    cam = pv_explorers.Camera([0,0,0], [0,1,0], 10.0, view_proxy)
+    filt = pv_explorers.Slice("offset", sliceFilt)
+    col = pv_explorers.Color("color", sliceRep)
+
+    args = ["phi","theta","offset","color"]
+    e = explorers.Explorer(cs, args, [cam, filt, col])
     e.UpdatePipeline("NONE")
 
     cs.write_json()
 
+    del view_proxy
     return e
 
 
