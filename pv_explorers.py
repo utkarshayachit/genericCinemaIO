@@ -64,14 +64,60 @@ class Slice(explorers.Engine):
         self.slice = filt
 
     def execute(self, arguments):
-        """ subclasses operate on arguments here and return a result """
         o = arguments[self.argument]
         self.slice.SliceOffsetValues=[o]
         payload = None
         return payload
 
     def save(self, fullname, payload, arguments):
-        """ subclasses save off the payload here  """
+        if self.iSave:
+            #print "SAVING", fullname, payload, arguments
+            simple.WriteImage(fullname)
+
+class Contour(explorers.Engine):
+
+    @classmethod
+    def get_data_type(cls):
+        return "parametric-image-stack"
+
+    def __init__(self, argument, filt, iSave=False):
+        explorers.Engine.__init__(self, iSave)
+
+        self.argument = argument
+        self.contour = filt
+        self.control = 'Isosurfaces'
+
+    def execute(self, arguments):
+        o = arguments[self.argument]
+        self.contour.SetPropertyWithName(self.control,[o])
+        payload = None
+        return payload
+
+    def save(self, fullname, payload, arguments):
+        if self.iSave:
+            #print "SAVING", fullname, payload, arguments
+            simple.WriteImage(fullname)
+
+class Templated(explorers.Engine):
+
+    @classmethod
+    def get_data_type(cls):
+        return "parametric-image-stack"
+
+    def __init__(self, argument, filt, control, iSave=False):
+        explorers.Engine.__init__(self, iSave)
+
+        self.argument = argument
+        self.filt = filt
+        self.control = control
+
+    def execute(self, arguments):
+        o = arguments[self.argument]
+        self.filt.SetPropertyWithName(self.control,[o])
+        payload = None
+        return payload
+
+    def save(self, fullname, payload, arguments):
         if self.iSave:
             #print "SAVING", fullname, payload, arguments
             simple.WriteImage(fullname)
