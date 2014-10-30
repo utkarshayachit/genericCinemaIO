@@ -34,6 +34,13 @@ class Explorer(object):
             for e in self.engines:
                 res = e.prepare(self)
 
+    def execute(self, desc):
+        # Create the document/data product for this sample.
+        doc = cinema_store.Document(desc)
+        for e in self.engines:
+            e.execute(doc)
+        self.insert(doc)
+
     def explore(self):
         """Explore the problem space to populate the store"""
         self.prepare()
@@ -48,11 +55,7 @@ class Explorer(object):
 
         for element in itertools.product(*values):
             desc = dict(itertools.izip(args, element))
-            # Create the document/data product for this sample.
-            doc = cinema_store.Document(desc)
-            for e in self.engines:
-                e.execute(doc)
-            self.insert(doc)
+            self.execute(desc)
 
         self.finish()
 
