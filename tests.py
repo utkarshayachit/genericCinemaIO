@@ -4,128 +4,34 @@ This module tests the generic interface to cinema data.
 
 from cinema_store import *
 
-def test_read(fname = None, silent = True):
-    if not fname:
-        fname = "info.json"
-    cs = CinemaStore(fname)
-    if not cs.verify():
-        print "problem with that file"
-        return None
+def demonstrate_populate(fname="/tmp/demonstrate_populate/info.json"):
+    """Demonstrates how to setup a basic cinema store filling the data up with text"""
+    import explorers
 
-    if not silent:
-        print "CS", cs
-        print "ARGS", cs.get_arguments()
-        print "NPS", cs.get_name_pattern_string()
-        print "MD", cs.get_metadata()
-    return cs
+    cs = FileStore(fname)
+    cs.filename_pattern = "{theta}/{phi}"
+    cs.add_descriptor("theta", make_cinema_descriptor_properties('theta', [0,10,20,30,40]))
+    cs.add_descriptor("phi", make_cinema_descriptor_properties('phi', [0,10,20,30,40]))
 
-def test_argument(fname = None):
-    cs = test_read(fname, True)
+    class Engine(explorers.Engine):
+        def execute(self, doc):
+            # we save the document's descriptor as the data in
+            # this dummy document.
+            doc.data = str(doc.descriptor)
 
-    if not cs:
-        return
+    e = explorers.Explorer(cs, ['theta', 'phi'], [Engine()])
+    e.explore()
 
-    print "* before"
-    args = cs.get_arguments()
-    for x in args:
-        print x, "\t", args[x]
-
-    a = cs.add_argument("theta", [0,45,90,135,180])
-
-    print "* after"
-    args = cs.get_arguments()
-    for x in args:
-        print x, "\t", args[x]
-
-def test_name_pattern():
-    cs = CinemaStore("info.json")
-    cs.set_name_pattern("time","theta","range")
-    print(cs.get_name_pattern_string())
-    cs.set_name_pattern("theta","time","range",usedir=True)
-    print(cs.get_name_pattern_string())
-    cs.set_name_pattern("theta","time","range",usedir=False)
-    print(cs.get_name_pattern_string())
-
-def test_write(fname=None):
-    if not fname:
-        fname = "info.json"
-    cs = CinemaStore(fname)
-
-    cs.set_metadata = {"testing":123}
-    a = cs.add_argument("theta", [0,45,90,135,180])
-    a = cs.add_argument("filename", ["rgb.png"], typechoice='list')
-    cs.misc_json["miscelaneous"] = "vilanous"
-    cs.set_name_pattern_string("{theta}")
-    cs.write_json(fname)
-    return cs
-
-def test_load_item(fname = None):
-    def handler(fullname,arguments):
-        import hashlib
-        import os
-        if not os.path.exists(fullname):
-            print fullname, "is missing"
-        else:
-            print fullname, hashlib.md5(open(fullname, 'rb').read()).hexdigest()
-    cs = test_read(fname)
-    res = cs.load_item(handler, {'phi':120,'time':10,'filename':'nada.txt'})
-    res = cs.load_item(handler, {'phi':120,'time':10,'filename':'rgb.png'})
-
-def test_save_item(fname = None):
-    def handler(fullname, item, arguments):
-        fd = open(fullname, 'w')
-        fd.write(item)
-        fd.close()
-    cs = test_read(fname)
-    res = cs.save_item( "The quick brown fox jumped over the lazy dog.\n", handler, {'phi':120,'time':10,'filename':'event.txt'})
-
-def test_next(fname=None):
-    def handler(fullname, arguments):
-        print fullname, arguments
-
-    cs = test_read(fname)
-    cs.add_argument("phi", [0,45,90,135,180])
-    cs.set_name_pattern("theta","phi")
-
-    for args, idx in cs.next_set():
-        cs.load_item(handler, args)
-
-def demonstrate_populate(fname="info.json"):
-    """ this demonstrates populating a new cinema store from a flat list of files."""
-    cs = CinemaStore(fname)
-    cs.set_name_pattern_string("{theta}/{phi}")
-    cs.add_argument("theta", [0,10,20,30,40])
-    cs.add_argument("phi", [0,10,20,30,40])
-    cs.write_json()
-
-    def handler(fullname, ifile, arguments):
-        import shutil
-        print "cp", ifile, fullname
-        shutil.copyfile(ifile, fullname)
-
-    for args, idx in cs.next_set():
-        ifile = "/Users/demarle/tmp/infiles/file_" + str(idx) + ".txt"
-        args['filename']="copy2"
-        cs.save_item(ifile, handler, args)
-
-def demonstrate_analyze(fname="info.json"):
+def demonstrate_analyze(fname="/tmp/demonstrate_populate/info.json"):
     """
     this demonstrates traversing an existing cinema store and doing some analysis
     (in this case just printing the contents) on each item
     """
-    cs = CinemaStore(fname)
-
-    def handler(fullname, arguments):
-        print fullname
-        fd = open(fullname, 'r')
-        for line in fd:
-            print line
-        fd.close()
-
-    for args, idx in cs.next_set():
-        args['filename']="copy2"
-        cs.load_item(handler, args)
-
+    cs = FileStore(fname)
+    cs.load()
+    print cs.descriptor_definition
+    for doc in cs.find({'theta': 20}):
+        print doc.descriptor, doc.data
 
 def test_camera(fname="info.json"):
     """
@@ -406,7 +312,9 @@ def test_NOP(fname):
 
 if __name__ == "__main__":
     test_store()
-    test_pv_slice("/tmp/pv_slice_data/info.json")
-    test_vtk_clip("/tmp/vtk_clip_data/info.json")
-    test_pv_contour("/tmp/pv_contour/info.json")
-    test_NOP("/tmp/nop/info.json")
+    demonstrate_populate()
+    demonstrate_analyze()
+#   test_pv_slice("/tmp/pv_slice_data/info.json")
+#   test_vtk_clip("/tmp/vtk_clip_data/info.json")
+#   test_pv_contour("/tmp/pv_contour/info.json")
+#   test_NOP("/tmp/nop/info.json")

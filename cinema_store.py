@@ -123,6 +123,8 @@ class Store(object):
         assert not self.__loaded
         self.__loaded = True
 
+    def find(self, q=None):
+        raise RuntimeError("Subclasses must define this method")
 
 class FileStore(Store):
     """Implementation of a store based on files and directories"""
@@ -138,9 +140,9 @@ class FileStore(Store):
         super(FileStore, self).load()
         with open(self.__dbfilename, mode="rb") as file:
             info_json = json.load(file)
-            self._set_descriptor_definition(info_json.arguments)
-            self.metadata = info_json.metadata
-            self.__filename_pattern = info_json.name_pattern
+            self._set_descriptor_definition(info_json['arguments'])
+            self.metadata = info_json['metadata']
+            self.__filename_pattern = info_json['name_pattern']
 
     def create(self):
         """creates a new file store"""
@@ -174,11 +176,46 @@ class FileStore(Store):
         with open(fname, mode='w') as file:
             file.write(document.data)
 
+        with open(fname + ".__data__", mode="w") as file:
+            info_json = dict(
+                    descriptor = document.descriptor,
+                    attributes = document.attributes)
+            json.dump(info_json, file)
+
+
     def get_filename(self, document):
         desc = self.get_full_descriptor(document.descriptor)
         suffix = self.filename_pattern.format(**desc)
         dirname = os.path.dirname(self.__dbfilename)
         return os.path.join(dirname, suffix)
+
+    def find(self, q=None):
+        q = q if q else dict()
+        p = q
+        for name, properties in self.descriptor_definition.items():
+            if not name in q:
+                p[name] = "*"
+
+        dirname = os.path.dirname(self.__dbfilename)
+        match_pattern = os.path.join(dirname, self.filename_pattern.format(**p))
+        print match_pattern
+
+        from fnmatch import fnmatch
+        from os import walk
+        for root, dirs, files in walk(os.path.dirname(self.__dbfilename)):
+            for file in files:
+                doc_file = os.path.join(root, file)
+                if file.find("__data__") == -1 and fnmatch(doc_file, match_pattern):
+                    yield self.load_document(doc_file)
+
+    def load_document(self, doc_file):
+        with open(doc_file + ".__data__", "r") as file:
+            info_json = json.load(file)
+        with open(doc_file, "r") as file:
+            data = file.read()
+        doc = Document(info_json["descriptor"], data)
+        doc.attributes = info_json["attributes"]
+        return doc
 
 
 def make_cinema_descriptor_properties(name, values, **kwargs):
