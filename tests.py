@@ -33,83 +33,6 @@ def demonstrate_analyze(fname="/tmp/demonstrate_populate/info.json"):
     for doc in cs.find({'theta': 20}):
         print doc.descriptor, doc.data
 
-def test_camera(fname="info.json"):
-    """
-    tests the 360 camera handler by making one and setting up a vtk pipeline
-    that it controls and dumps images out into the data base from.
-    """
-    import camera
-    cs = CinemaStore(fname)
-    cs.set_name_pattern_string("{phi}/{theta}")
-    cs.add_argument('filename','rgb.png')
-    cam = camera.ThreeSixtyCameraHandler(
-        cs,
-        [180], [-180,-150,-120,-90,-60,-30,0,30,60,90,120,150,180], [0,0,0],
-        [1,0,0], 5)
-    sys.path.append("/Builds/VTK/devel/master/lib")
-    sys.path.append("/Builds/VTK/devel/master/lib/site-packages/")
-    sys.path.append("/Builds/VTK/devel/master/Wrapping/Python/")
-
-    import vtk
-    rw = vtk.vtkRenderWindow()
-    r = vtk.vtkRenderer()
-    rw.AddRenderer(r)
-    s = vtk.vtkSphereSource()
-    m = vtk.vtkPolyDataMapper()
-    m.SetInputConnection(s.GetOutputPort())
-    a = vtk.vtkActor()
-    a.SetMapper(m)
-    r.AddActor(a)
-    rw.Render()
-    c = r.GetActiveCamera()
-    w2i = vtk.vtkWindowToImageFilter()
-    w2i.SetInput(rw)
-    pw = vtk.vtkPNGWriter()
-    pw.SetInputConnection(w2i.GetOutputPort())
-
-    def handler(cam):
-        p = cam.get_camera_position()
-        c.SetPosition(p[0],p[1],p[2])
-        u = cam.get_camera_view_up()
-        c.SetViewUp(u[0],u[1],u[2])
-        f = cam.get_camera_focal_point()
-        c.SetFocalPoint(f[0],f[1],f[2])
-        r.ResetCameraClippingRange()
-        rw.Render()
-        w2i.Modified()
-
-        cs.save_item("",None)
-        pt = cs._active_arguments
-        pt['filename'] = 'rgb.png'
-        fn = cs._find_file(pt)
-        pw.SetFileName(fn);
-        pw.Write()
-
-    cam.set_callback(handler)
-
-    for x in cam:
-        cam.apply_position()
-
-    cs.write_json()
-    return cam
-
-def test_Explorer():
-    import explorers
-
-    cs = CinemaStore('info.json')
-    cs.get_arguments()
-    e = explorers.Explorer(cs, cs.get_arguments(), None, None)
-    print "ARGS", e.list_arguments()
-    print "DT", e.get_data_type()
-    e.Run()
-
-    print "*"*40
-    g = explorers.Engine()
-    e = explorers.Explorer(cs, cs.get_arguments(), "hey man", g)
-    e.Run()
-
-    return e
-
 def test_vtk_clip(fname=None):
     import explorers
     import vtk_explorers
@@ -314,7 +237,7 @@ if __name__ == "__main__":
     test_store()
     demonstrate_populate()
     demonstrate_analyze()
-#   test_pv_slice("/tmp/pv_slice_data/info.json")
-#   test_vtk_clip("/tmp/vtk_clip_data/info.json")
-#   test_pv_contour("/tmp/pv_contour/info.json")
-#   test_NOP("/tmp/nop/info.json")
+    test_pv_slice("/tmp/pv_slice_data/info.json")
+    test_vtk_clip("/tmp/vtk_clip_data/info.json")
+    test_pv_contour("/tmp/pv_contour/info.json")
+    test_NOP("/tmp/nop/info.json")
