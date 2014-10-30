@@ -1,38 +1,38 @@
 import explorers
 import vtk
+from vtk.util import numpy_support
 
 class Clip(explorers.Engine):
 
-    @classmethod
-    def get_data_type(cls):
-        return "parametric-image-stack"
-
-    def __init__(self, argument, clip, rw, iSave=True):
-        explorers.Engine.__init__(self, iSave)
+    def __init__(self, argument, clip):
+        super(Clip, self).__init__()
         self.argument = argument
-
         self.clip = clip
-        self.rw = rw
 
-        self.w2i = vtk.vtkWindowToImageFilter()
-        self.w2i.SetInput(self.rw)
+    def prepare(self, explorer):
+        super(Clip, self).prepare(explorer)
+        explorer.cinema_store.add_metadata({'type': 'parametric-image-stack'})
 
-        self.pw = vtk.vtkPNGWriter()
-        self.pw.SetInputConnection(self.w2i.GetOutputPort())
-
-    def execute(self, arguments):
+    def execute(self, doc):
         """ subclasses operate on arguments here and return a result """
-        o = arguments[self.argument]
+        o = doc.descriptor[self.argument]
         self.clip.SetValue(o)
 
-        payload = None
-        return payload
 
-    def save(self, fullname, payload, arguments):
-        """ subclasses save off the payload here  """
-        if iSave:
-            #print "SAVING", fullname, payload, arguments
-            self.rw.Render()
-            self.w2i.Modified()
-            self.pw.SetFileName(fullname)
-            self.pw.Write()
+class ImageExplorer(explorers.Explorer):
+
+    def __init__(self, cinema_store, arguments, engines, rw):
+        super(ImageExplorer, self).__init__(cinema_store, arguments, engines)
+        self.rw = rw
+        self.w2i = vtk.vtkWindowToImageFilter()
+        self.w2i.SetInput(self.rw)
+        self.pw = vtk.vtkPNGWriter()
+        self.pw.SetInputConnection(self.w2i.GetOutputPort())
+        self.pw.WriteToMemoryOn()
+
+    def insert(self, document):
+        self.rw.Render()
+        self.w2i.Modified()
+        self.pw.Write()
+        document.data = numpy_support.vtk_to_numpy(self.pw.GetResult())
+        super(ImageExplorer, self).insert(document)

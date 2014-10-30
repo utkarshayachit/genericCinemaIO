@@ -238,19 +238,16 @@ def test_vtk_clip(fname=None):
     r.AddActor(a)
 
     #make or open a cinema data store to put results in
-    cs = CinemaStore(fname)
-    cs.set_name_pattern_string("{offset}_{filename}")
-    a = cs.add_argument("offset", [0,.2,.4,.6,.8,1.0])
-    a = cs.add_argument("filename", ['slice.png'])
+    cs = FileStore(fname)
+    cs.filename_pattern = "{offset}_slice.png"
+    cs.add_descriptor("offset", make_cinema_descriptor_properties('offset', [0,.2,.4,.6,.8,1.0]))
 
     #associate control points wlth parameters of the data store
-    g = vtk_explorers.Clip('offset', clip, rw)
-    e = explorers.Explorer(cs, ['offset'], [g])
+    g = vtk_explorers.Clip('offset', clip)
+    e = vtk_explorers.ImageExplorer(cs, ['offset'], [g], rw)
 
     #run through all parameter combinations and put data into the store
-    e.UpdatePipeline("NONE")
-
-    cs.write_json()
+    e.explore()
 
     return e
 
@@ -308,4 +305,5 @@ def test_store():
 
 if __name__ == "__main__":
     test_store()
-    test_pv_slice("/tmp/data/info.json")
+    #test_pv_slice("/tmp/pv_slice_data/info.json")
+    test_vtk_clip("/tmp/vtk_clip_data/info.json")
