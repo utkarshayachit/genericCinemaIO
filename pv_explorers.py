@@ -62,12 +62,98 @@ class Slice(explorers.Engine):
         o = doc.descriptor[self.argument]
         self.slice.SliceOffsetValues=[o]
 
-class Color(explorers.Engine):
-    def __init__(self, argument, rep):
-        super(Color, self).__init__()
+class Contour(explorers.Engine):
+
+    @classmethod
+    def get_data_type(cls):
+        return "parametric-image-stack"
+
+    def __init__(self, argument, filt, iSave=False):
+        explorers.Engine.__init__(self, iSave)
+
         self.argument = argument
+        self.contour = filt
+        self.control = 'Isosurfaces'
+
+    def execute(self, arguments):
+        o = arguments[self.argument]
+        self.contour.SetPropertyWithName(self.control,[o])
+        payload = None
+        return payload
+
+    def save(self, fullname, payload, arguments):
+        if self.iSave:
+            #print "SAVING", fullname, payload, arguments
+            simple.WriteImage(fullname)
+
+class Templated(explorers.Engine):
+
+    @classmethod
+    def get_data_type(cls):
+        return "parametric-image-stack"
+
+    def __init__(self, argument, filt, control, iSave=False):
+        explorers.Engine.__init__(self, iSave)
+
+        self.argument = argument
+        self.filt = filt
+        self.control = control
+
+    def execute(self, arguments):
+        o = arguments[self.argument]
+        self.filt.SetPropertyWithName(self.control,[o])
+        payload = None
+        return payload
+
+    def save(self, fullname, payload, arguments):
+        if self.iSave:
+            #print "SAVING", fullname, payload, arguments
+            simple.WriteImage(fullname)
+
+class ColorList():
+    """
+    A helper that creates a dictionary of color controls for ParaView. The Color engine takes in
+    a Color name from the Explorer and looks up into a ColorList to determine exactly what
+    needs to be set to apply the color.
+    """
+    def __init__(self):
+        self._dict = {}
+
+    def AddSolidColor(self, name, RGB):
+        self._dict[name] = {'type':'rgb','content':RGB}
+
+    def AddLUT(self, name, lut):
+        self._dict[name] = {'type':'lut','content':lut}
+
+    def getColor(self, name):
+        return self._dict[name]
+
+class Color(explorers.Engine):
+
+    @classmethod
+    def get_data_type(cls):
+        return None
+
+    def __init__(self, argument, colorlist, rep, iSave=True):
+        explorers.Engine.__init__(self, iSave)
+        self.argument = argument
+        self.colorlist = colorlist
         self.rep = rep
 
-    def execute(self, doc):
-        o = doc.descriptor[self.argument]
-        self.rep.DiffuseColor = o
+    def execute(self, arguments):
+        """ subclasses operate on arguments here and return a result """
+        o = arguments[self.argument]
+        spec = self.colorlist.getColor(o)
+        if spec['type'] == 'rgb':
+            self.rep.DiffuseColor = spec['content']
+            self.rep.ColorArrayName = None
+        if spec['type'] == 'lut':
+            self.rep.LookupTable = spec['content']
+            self.rep.ColorArrayName = o
+        return None
+
+    def save(self, fullname, payload, arguments):
+        """ subclasses save off the payload here  """
+        if self.iSave:
+            #print "SAVING", fullname, payload, arguments
+            simple.WriteImage(fullname)
