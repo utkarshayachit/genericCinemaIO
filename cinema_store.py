@@ -1,5 +1,5 @@
 """
-This module defines a structured API to working with cinema data stores.
+    Module defining classes and methods for managing cinema data storage.
 """
 
 #TODO:
@@ -17,7 +17,14 @@ import itertools
 import weakref
 
 class Document(object):
-    """Refers to a document in the Store."""
+    """
+    This refers to a document in the cinema data storage. A document is
+    uniquely identified by a 'descriptor'. A descriptor is a dictionary with
+    key-value pairs, where key is the component name and value is its value.
+
+    A document can have arbitrary meta-data (as 'attributes') and data (as
+    'data') associated with it.
+    """
     def __init__(self, descriptor, data=None):
         self.__descriptor = descriptor
         self.__data = data
@@ -25,24 +32,26 @@ class Document(object):
 
     @property
     def descriptor(self):
-        """Returns the document descriptor. A document descriptor is a unique
-        identifier for the document. It is a dict with key value pairs."""
+        """A document descriptor is a unique
+        identifier for the document. It is a dict with key value pairs. The
+        descriptor cannot be changed once the document has been instantiated."""
         return self.__descriptor
 
     @property
     def attributes(self):
-        """Returns the document attributes, if any. If no attributes are
-        present, a None may be returned. Attributes are a dict with arbitrary
-        meta-data relevant to the application."""
+        """Attributes are arbitrary meta-data associated with the document.
+        If no attributes are present, it is set to None. When present,
+        attributes are a dict with arbitrary meta-data relevant to the application.
+        """
         return self.__attributes
 
     @attributes.setter
     def attributes(self, attrs):
-        """Set document attributes"""
         self.__attributes = attrs
 
     @property
     def data(self):
+        """Data associated with the document."""
         return self.__data
 
     @data.setter
@@ -52,7 +61,23 @@ class Document(object):
 class Store(object):
     """Base class for a cinema store. This class is an abstract class defining
     the API and storage independent logic. Storage specific subclasses handle
-    the 'database' access."""
+    the 'database' access.
+
+    The design of cinema store is based on the following principles:
+
+    The store comprises of documents (Document instances). Each document has an
+    unique descriptor associated with it. This can be thought of as the 'unique
+    key' in database terminology.
+
+    One can define the components for descriptors for documents in a Store on
+    the store itself. This is referred to as 'descriptor_definition'. One can
+    use 'add_descriptor()' calls to add new descriptor definitions for a new
+    store instance.
+
+    Users insert documents in the store using 'insert'. One can find
+    document(s) using 'find' which returns a generator (or cursor) allow users
+    to iterate over all match documents.
+    """
 
     def __init__(self):
         self.__metadata = None #better name is view hints
@@ -190,15 +215,21 @@ class FileStore(Store):
         return os.path.join(dirname, suffix)
 
     def find(self, q=None):
+        """Currently support empty query or direct values queries e.g.
+        for doc in store.find({'phi': 0}):
+            print doc.data
+        for doc in store.find({'phi': 0, 'theta': 100}):
+            print doc.data
+        """
         q = q if q else dict()
         p = q
+
+        # build a file name match pattern based on the query.
         for name, properties in self.descriptor_definition.items():
             if not name in q:
                 p[name] = "*"
-
         dirname = os.path.dirname(self.__dbfilename)
         match_pattern = os.path.join(dirname, self.filename_pattern.format(**p))
-        print match_pattern
 
         from fnmatch import fnmatch
         from os import walk
