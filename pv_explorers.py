@@ -64,27 +64,19 @@ class Slice(explorers.Engine):
 
 class Contour(explorers.Engine):
 
-    @classmethod
-    def get_data_type(cls):
-        return "parametric-image-stack"
-
     def __init__(self, argument, filt, iSave=False):
-        explorers.Engine.__init__(self, iSave)
-
+        super(Contour, self).__init__()
         self.argument = argument
         self.contour = filt
         self.control = 'Isosurfaces'
 
-    def execute(self, arguments):
-        o = arguments[self.argument]
-        self.contour.SetPropertyWithName(self.control,[o])
-        payload = None
-        return payload
+    def prepare(self, explorer):
+        super(Contour, self).prepare(explorer)
+        explorer.cinema_store.add_metadata({'type': "parametric-image-stack"})
 
-    def save(self, fullname, payload, arguments):
-        if self.iSave:
-            #print "SAVING", fullname, payload, arguments
-            simple.WriteImage(fullname)
+    def execute(self, doc):
+        o = doc.descriptor[self.argument]
+        self.contour.SetPropertyWithName(self.control,[o])
 
 class Templated(explorers.Engine):
 
@@ -130,19 +122,14 @@ class ColorList():
 
 class Color(explorers.Engine):
 
-    @classmethod
-    def get_data_type(cls):
-        return None
-
-    def __init__(self, argument, colorlist, rep, iSave=True):
-        explorers.Engine.__init__(self, iSave)
+    def __init__(self, argument, colorlist, rep):
+        super(Color, self).__init__()
         self.argument = argument
         self.colorlist = colorlist
         self.rep = rep
 
-    def execute(self, arguments):
-        """ subclasses operate on arguments here and return a result """
-        o = arguments[self.argument]
+    def execute(self, doc):
+        o = doc.descriptor[self.argument]
         spec = self.colorlist.getColor(o)
         if spec['type'] == 'rgb':
             self.rep.DiffuseColor = spec['content']
@@ -151,9 +138,3 @@ class Color(explorers.Engine):
             self.rep.LookupTable = spec['content']
             self.rep.ColorArrayName = o
         return None
-
-    def save(self, fullname, payload, arguments):
-        """ subclasses save off the payload here  """
-        if self.iSave:
-            #print "SAVING", fullname, payload, arguments
-            simple.WriteImage(fullname)

@@ -265,17 +265,21 @@ def test_pv_slice(fname):
 
     #make or open a cinema data store to put results in
     cs = FileStore(fname)
-    cs.filename_pattern = "{phi}_{theta}_{offset}_slice.png"
+    cs.filename_pattern = "{phi}_{theta}_{offset}_{color}_slice.png"
     cs.add_descriptor("phi", make_cinema_descriptor_properties('phi', [90, 120, 140]))
     cs.add_descriptor("theta", make_cinema_descriptor_properties('theta', [-90,-30,30,90]))
     cs.add_descriptor("offset", make_cinema_descriptor_properties('offset', [-.4,-.2,0,.2,.4]))
-    cs.add_descriptor("color", make_cinema_descriptor_properties('color',
-        [[1,1,0],[0,1,1],[1,0,1]], typechoice='list'))
+    cs.add_descriptor("color", make_cinema_descriptor_properties('color', ['yellow', 'cyan', "purple"], typechoice='list'))
+
+    colorChoice = pv_explorers.ColorList()
+    colorChoice.AddSolidColor('yellow', [1, 1, 0])
+    colorChoice.AddSolidColor('cyan', [0, 1, 1])
+    colorChoice.AddSolidColor('purple', [1, 0, 1])
 
     #associate control points wlth parameters of the data store
     cam = pv_explorers.Camera([0,0,0], [0,1,0], 10.0, view_proxy) #phi,theta implied
     filt = pv_explorers.Slice("offset", sliceFilt)
-    col = pv_explorers.Color("color", sliceRep)
+    col = pv_explorers.Color("color", colorChoice, sliceRep)
 
     args = ["phi","theta","offset","color"]
     e = pv_explorers.ImageExplorer(cs, args, [cam, filt, col])
@@ -313,21 +317,20 @@ def test_pv_contour(fname):
     # set up some processing task
     view_proxy = pv.CreateRenderView()
     s = pv.Wavelet()
-    filt = pv.Contour(Input=s, ContourBy='RTData', ComputeScalars=1 )
-    sliceRep = pv.Show(filt)
+    contour = pv.Contour(Input=s, ContourBy='RTData', ComputeScalars=1 )
+    sliceRep = pv.Show(contour)
 
     #make or open a cinema data store to put results in
-    cs = CinemaStore(fname)
-    cs.set_name_pattern_string("{phi}_{theta}_{contour}_{color}_{filename}")
-    a = cs.add_argument("phi", [90,120,140])
-    a = cs.add_argument("theta", [-90,-30,30,90])
-    a = cs.add_argument("contour", [50,100,150,200])
-    a = cs.add_argument("color", ['white', 'RTData'], typechoice='list')
-    a = cs.add_argument("filename", ['contour.png'])
+    cs = FileStore(fname)
+    cs.filename_pattern = "{phi}_{theta}_{contour}_{color}_contour.png"
+    cs.add_descriptor("phi", make_cinema_descriptor_properties('phi', [90,120,140]))
+    cs.add_descriptor("theta", make_cinema_descriptor_properties('theta', [-90,-30,30,90]))
+    cs.add_descriptor("contour", make_cinema_descriptor_properties('contour', [50,100,150,200]))
+    cs.add_descriptor("color", make_cinema_descriptor_properties('color', ['white', 'RTData'], typechoice='list'))
 
     #associate control points wlth parameters of the data store
     cam = pv_explorers.Camera([0,0,0], [0,1,0], 75.0, view_proxy) #phi,theta implied
-    filt = pv_explorers.Contour("contour", filt)
+    filt = pv_explorers.Contour("contour", contour)
 
     colorChoice = pv_explorers.ColorList()
     colorChoice.AddSolidColor('white', [1,1,1])
@@ -336,13 +339,14 @@ def test_pv_contour(fname):
     col = pv_explorers.Color("color", colorChoice, sliceRep)
 
     args = ["phi","theta","contour","color"]
-    e = explorers.Explorer(cs, args, [cam, filt, col])
+    e = pv_explorers.ImageExplorer(cs, args, [cam, filt, col])
 
     #run through all parameter combinations and put data into the store
-    e.Run()
-    cs.write_json()
+    e.explore()
 
-    del view_proxy
+    pv.Delete(s)
+    pv.Delete(contour)
+    pv.Delete(view_proxy)
     return e
 
 def test_NOP(fname):
@@ -356,22 +360,22 @@ def test_NOP(fname):
     # set up some processing task
     view_proxy = pv.CreateRenderView()
     s = pv.Wavelet()
-    filt = pv.Contour(Input=s, ContourBy='RTData', ComputeScalars=1 )
-    sliceRep = pv.Show(filt)
+    c = pv.Contour(Input=s, ContourBy='RTData', ComputeScalars=1 )
+    sliceRep = pv.Show(c)
 
     #make or open a cinema data store to put results in
-    cs = CinemaStore(fname)
-    cs.set_name_pattern_string("{phi}_{theta}_{contour}_{color}_{filename}")
-    a = cs.add_argument("phi", [90,120,140])
-    a = cs.add_argument("theta", [-90,-30,30,90])
-    a = cs.add_argument("contour", [50,100,150,200])
-    a = cs.add_argument("color", ['white', 'RTData'], typechoice='list')
-    a = cs.add_argument("operation", ['a', 'b', 'c'], typechoice='list')
-    a = cs.add_argument("filename", ['contour.png'])
+    cs = FileStore(fname)
+    cs.filename_pattern = "{phi}_{theta}_{contour}_{color}_data.raw"
+    cs.add_descriptor("phi", make_cinema_descriptor_properties('phi', [90,120,140]))
+    cs.add_descriptor("theta", make_cinema_descriptor_properties('theta', [-90,-30,30,90]))
+    cs.add_descriptor("contour", make_cinema_descriptor_properties('contour', [50,100,150,200]))
+    cs.add_descriptor("color", make_cinema_descriptor_properties('color', ['white', 'RTData'], typechoice='list'))
+    cs.add_descriptor("operation", make_cinema_descriptor_properties('operation',
+        ['a', 'b', 'c'], typechoice='list'))
 
     #associate control points wlth parameters of the data store
     cam = pv_explorers.Camera([0,0,0], [0,1,0], 75.0, view_proxy) #phi,theta implied
-    filt = pv_explorers.Contour("contour", filt)
+    filt = pv_explorers.Contour("contour", c)
     colorChoice = pv_explorers.ColorList()
     colorChoice.AddSolidColor('white', [1,1,1])
     colorChoice.AddLUT('RTData', pv.GetLookupTableForArray( "RTData", 1, RGBPoints=[43.34006881713867, 0.23, 0.299, 0.754, 160.01158714294434, 0.865, 0.865, 0.865, 276.68310546875, 0.706, 0.016, 0.15] )
@@ -385,16 +389,11 @@ def test_NOP(fname):
         May be useful for composite view type for example.
         """
         import os.path
-        def __init__(self):
-            explorers.Engine.__init__(self, False)
-        def execute(self, arguments):
-            o = arguments['operation']
-            print arguments, "OP=", o
-            return o
-        def save(self,fullname, payload, arguments):
-            fd = open(os.path.join(os.path.dirname(fullname), "res.txt"), 'a')
-            fd.write("%s %s\n" % (arguments, payload))
-            fd.close()
+
+        def execute(self, doc):
+            o = doc.descriptor['operation']
+            print doc.descriptor, "OP=", o
+            doc.data = o
 
     op = testEE()
 
@@ -402,12 +401,12 @@ def test_NOP(fname):
     e = explorers.Explorer(cs, args, [cam, filt, col, op])
 
     #run through all parameter combinations and put data into the store
-    e.()
-    cs.write_json()
-
+    e.explore()
     return e
 
 if __name__ == "__main__":
     test_store()
-    #test_pv_slice("/tmp/pv_slice_data/info.json")
+    test_pv_slice("/tmp/pv_slice_data/info.json")
     test_vtk_clip("/tmp/vtk_clip_data/info.json")
+    test_pv_contour("/tmp/pv_contour/info.json")
+    test_NOP("/tmp/nop/info.json")
