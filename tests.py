@@ -308,17 +308,22 @@ def test_pv_contour(fname):
 
     #make or open a cinema data store to put results in
     cs = CinemaStore(fname)
-    cs.set_name_pattern_string("{phi}_{theta}_{contour}_{filename}")
+    cs.set_name_pattern_string("{phi}_{theta}_{contour}_{color}_{filename}")
     a = cs.add_argument("phi", [90,120,140])
     a = cs.add_argument("theta", [-90,-30,30,90])
     a = cs.add_argument("contour", [50,100,150,200])
-    a = cs.add_argument("color", [[1,1,0],[0,1,1],[1,0,1]], typechoice='list')
+    a = cs.add_argument("color", ['white', 'RTData'], typechoice='list')
     a = cs.add_argument("filename", ['contour.png'])
 
     #associate control points wlth parameters of the data store
     cam = pv_explorers.Camera([0,0,0], [0,1,0], 75.0, view_proxy) #phi,theta implied
     filt = pv_explorers.Contour("contour", filt)
-    col = pv_explorers.Color("color", sliceRep)
+
+    colorChoice = pv_explorers.ColorList()
+    colorChoice.AddSolidColor('white', [1,1,1])
+    colorChoice.AddLUT('RTData', pv.GetLookupTableForArray( "RTData", 1, RGBPoints=[43.34006881713867, 0.23, 0.299, 0.754, 160.01158714294434, 0.865, 0.865, 0.865, 276.68310546875, 0.706, 0.016, 0.15] )
+)
+    col = pv_explorers.Color("color", colorChoice, sliceRep)
 
     args = ["phi","theta","contour","color"]
     e = explorers.Explorer(cs, args, [cam, filt, col])

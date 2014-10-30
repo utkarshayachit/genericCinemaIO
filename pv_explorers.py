@@ -122,22 +122,46 @@ class Templated(explorers.Engine):
             #print "SAVING", fullname, payload, arguments
             simple.WriteImage(fullname)
 
+class ColorList():
+    """
+    A helper that creates a dictionary of color controls for ParaView. The Color engine takes in
+    a Color name from the Explorer and looks up into a ColorList to determine exactly what
+    needs to be set to apply the color.
+    """
+    def __init__(self):
+        self._dict = {}
+
+    def AddSolidColor(self, name, RGB):
+        self._dict[name] = {'type':'rgb','content':RGB}
+
+    def AddLUT(self, name, lut):
+        self._dict[name] = {'type':'lut','content':lut}
+
+    def getColor(self, name):
+        return self._dict[name]
+
 class Color(explorers.Engine):
     @classmethod
     def get_data_type(cls):
         return None
 
-    def __init__(self, argument, rep, iSave=True):
+    def __init__(self, argument, colorlist, rep, iSave=True):
         explorers.Engine.__init__(self, iSave)
         self.argument = argument
+        self.colorlist = colorlist
         self.rep = rep
 
     def execute(self, arguments):
         """ subclasses operate on arguments here and return a result """
         o = arguments[self.argument]
-        self.rep.DiffuseColor = o
-        payload = None
-        return payload
+        spec = self.colorlist.getColor(o)
+        if spec['type'] == 'rgb':
+            self.rep.DiffuseColor = spec['content']
+            self.rep.ColorArrayName = None
+        if spec['type'] == 'lut':
+            self.rep.LookupTable = spec['content']
+            self.rep.ColorArrayName = o
+        return None
 
     def save(self, fullname, payload, arguments):
         """ subclasses save off the payload here  """
