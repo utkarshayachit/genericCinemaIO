@@ -49,7 +49,7 @@ class Explorer(object):
                 #set up chains using iSave=True in the last engine's constructor
                 self.cinema_store.save_item(res, e.save, args=arguments)
 
-    def UpdatePipeline(self, arguments):
+    def Run(self):
         """ Execute all steps. """
 
         self.prepare()

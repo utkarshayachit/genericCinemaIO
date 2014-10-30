@@ -195,12 +195,12 @@ def test_Explorer():
     e = explorers.Explorer(cs, cs.get_arguments(), None, None)
     print "ARGS", e.list_arguments()
     print "DT", e.get_data_type()
-    e.UpdatePipeline("NONE")
+    e.Run()
 
     print "*"*40
     g = explorers.Engine()
     e = explorers.Explorer(cs, cs.get_arguments(), "hey man", g)
-    e.UpdatePipeline("NONE")
+    e.Run()
 
     return e
 
@@ -248,7 +248,7 @@ def test_vtk_clip(fname):
     e = explorers.Explorer(cs, ['offset'], [g])
 
     #run through all parameter combinations and put data into the store
-    e.UpdatePipeline("NONE")
+    e.Run()
     cs.write_json()
 
     return e
@@ -286,7 +286,7 @@ def test_pv_slice(fname):
     e = explorers.Explorer(cs, args, [cam, filt, col])
 
     #run through all parameter combinations and put data into the store
-    e.UpdatePipeline("NONE")
+    e.Run()
     cs.write_json()
 
     del view_proxy
@@ -329,10 +329,72 @@ def test_pv_contour(fname):
     e = explorers.Explorer(cs, args, [cam, filt, col])
 
     #run through all parameter combinations and put data into the store
-    e.UpdatePipeline("NONE")
+    e.Run()
     cs.write_json()
 
     del view_proxy
+    return e
+
+def test_NOP(fname):
+    import explorers
+    import pv_explorers
+    import paraview.simple as pv
+
+    if not fname:
+        fname = "info.json"
+
+    # set up some processing task
+    view_proxy = pv.CreateRenderView()
+    s = pv.Wavelet()
+    filt = pv.Contour(Input=s, ContourBy='RTData', ComputeScalars=1 )
+    sliceRep = pv.Show(filt)
+
+    #make or open a cinema data store to put results in
+    cs = CinemaStore(fname)
+    cs.set_name_pattern_string("{phi}_{theta}_{contour}_{color}_{filename}")
+    a = cs.add_argument("phi", [90,120,140])
+    a = cs.add_argument("theta", [-90,-30,30,90])
+    a = cs.add_argument("contour", [50,100,150,200])
+    a = cs.add_argument("color", ['white', 'RTData'], typechoice='list')
+    a = cs.add_argument("operation", ['a', 'b', 'c'], typechoice='list')
+    a = cs.add_argument("filename", ['contour.png'])
+
+    #associate control points wlth parameters of the data store
+    cam = pv_explorers.Camera([0,0,0], [0,1,0], 75.0, view_proxy) #phi,theta implied
+    filt = pv_explorers.Contour("contour", filt)
+    colorChoice = pv_explorers.ColorList()
+    colorChoice.AddSolidColor('white', [1,1,1])
+    colorChoice.AddLUT('RTData', pv.GetLookupTableForArray( "RTData", 1, RGBPoints=[43.34006881713867, 0.23, 0.299, 0.754, 160.01158714294434, 0.865, 0.865, 0.865, 276.68310546875, 0.706, 0.016, 0.15] )
+)
+    col = pv_explorers.Color("color", colorChoice, sliceRep)
+
+    class testEE(explorers.Engine):
+        """
+        An explorer to demonstrate not having an entry in the name_pattern.
+        Concievable can use these to combine several internal passes together.
+        May be useful for composite view type for example.
+        """
+        import os.path
+        def __init__(self):
+            explorers.Engine.__init__(self, False)
+        def execute(self, arguments):
+            o = arguments['operation']
+            print arguments, "OP=", o
+            return o
+        def save(self,fullname, payload, arguments):
+            fd = open(os.path.join(os.path.dirname(fullname), "res.txt"), 'a')
+            fd.write("%s %s\n" % (arguments, payload))
+            fd.close()
+
+    op = testEE()
+
+    args = ["phi","theta","contour","color","operation"]
+    e = explorers.Explorer(cs, args, [cam, filt, col, op])
+
+    #run through all parameter combinations and put data into the store
+    e.()
+    cs.write_json()
+
     return e
 
 
